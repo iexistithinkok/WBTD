@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WBTD Neon Music Vault</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+
+    <main class="app-shell">
+      <header>
+        <p class="eyebrow">Dynamic Audio Library</p>
+        <h1>WBTD Neon Music Vault</h1>
+        <p class="subhead">
+          GitHub Pages ready. Upload tracks into <code>/assets</code> and they auto-load from your repo.
+        </p>
+      </header>
+
+      <section class="player-card">
+        <div class="now-playing">
+          <p>Now playing</p>
+          <h2 id="track-title">No track selected</h2>
+          <span id="track-meta">Waiting for tracks…</span>
+        </div>
+
+        <div class="transport">
+          <button id="prev-btn" aria-label="Previous track">⏮</button>
+          <button id="play-btn" class="play" aria-label="Play or pause">▶</button>
+          <button id="next-btn" aria-label="Next track">⏭</button>
+        </div>
+
+        <div class="timeline">
+          <span id="current-time">0:00</span>
+          <input id="seek" type="range" min="0" max="100" value="0" />
+          <span id="duration">0:00</span>
+        </div>
+
+        <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+      </section>
+
+      <section class="playlist-card">
+        <div class="playlist-header">
+          <h3>Playlist</h3>
+          <button id="refresh-btn">Refresh tracks</button>
+        </div>
+        <ul id="playlist"></ul>
+      </section>
+    </main>
+
+    <audio id="audio"></audio>
+    <script src="app.js"></script>
+  </body>
+</html>
