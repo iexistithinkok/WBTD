@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WBTD Neon Media Vault</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+
+    <main class="app-shell">
+      <header>
+        <img class="brand-logo" src="assets/wbtd-logo.svg" alt="WBTD Cameron and Hutch logo" />
+        <p class="eyebrow">Dynamic Audio + Video Library</p>
+        <h1>WBTD Neon Media Vault</h1>
+        <p class="subhead">
+          Built for Cameron and Hutch. Upload media to <code>/assets</code> and refresh to auto-load tracks/videos.
+        </p>
+      </header>
+
+      <section class="player-card">
+        <div class="now-playing">
+          <p>Now playing</p>
+          <h2 id="track-title">No media selected</h2>
+          <span id="track-meta">Waiting for files…</span>
+        </div>
+
+        <div class="media-stage">
+          <video id="video" controls playsinline preload="metadata" class="hidden"></video>
+          <audio id="audio"></audio>
+        </div>
+
+        <div class="transport">
+          <button id="prev-btn" aria-label="Previous item">⏮</button>
+          <button id="play-btn" class="play" aria-label="Play or pause">▶</button>
+          <button id="next-btn" aria-label="Next item">⏭</button>
+        </div>
+
+        <div class="timeline">
+          <span id="current-time">0:00</span>
+          <input id="seek" type="range" min="0" max="100" value="0" />
+          <span id="duration">0:00</span>
+        </div>
+
+        <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+      </section>
+
+      <section class="playlist-card">
+        <div class="playlist-header">
+          <h3>Media Playlist</h3>
+          <button id="refresh-btn">Refresh library</button>
+        </div>
+        <ul id="playlist"></ul>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

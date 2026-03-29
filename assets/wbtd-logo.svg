@@ -1,0 +1,20 @@
+<svg width="840" height="220" viewBox="0 0 840 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ring" x1="40" y1="20" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#25D0FF"/>
+      <stop offset="0.5" stop-color="#8A5BFF"/>
+      <stop offset="1" stop-color="#FF4FD8"/>
+    </linearGradient>
+    <linearGradient id="txt" x1="250" y1="30" x2="760" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F6FF"/>
+      <stop offset="1" stop-color="#A8B8FF"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="110" cy="110" r="82" stroke="url(#ring)" stroke-width="16"/>
+  <circle cx="110" cy="110" r="56" fill="#0B0B13" stroke="#ffffff22" stroke-width="2"/>
+  <path d="M95 84L136 110L95 136V84Z" fill="url(#ring)"/>
+
+  <text x="230" y="98" fill="url(#txt)" font-family="Segoe UI, Arial, sans-serif" font-size="62" font-weight="800" letter-spacing="2">WBTD</text>
+  <text x="232" y="144" fill="#9ea2bf" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="600">Cameron + Hutch Media Vault</text>
+</svg>
