@@ -178,13 +178,17 @@ input[type='range'] {
   }
 }
 .subhead a {
-  color: White;
+  display: inline-block;
+  margin: 4px 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
   text-decoration: none;
-  border-bottom: 1px solid rgba(255,255,255,0.4);
   transition: all 0.2s ease;
 }
 
 .subhead a:hover {
-  color: #ffd700; /* gold accent */
-  border-bottom-color: #ffd700;
+  background: #ffd700;
+  color: #000;
 }
