@@ -15,6 +15,6 @@
   <circle cx="110" cy="110" r="56" fill="#0B0B13" stroke="#ffffff22" stroke-width="2"/>
   <path d="M95 84L136 110L95 136V84Z" fill="url(#ring)"/>
 
-  <text x="230" y="98" fill="url(#txt)" font-family="Segoe UI, Arial, sans-serif" font-size="62" font-weight="800" letter-spacing="2">WBTD</text>
-  <text x="232" y="144" fill="#9ea2bf" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="600">Cameron + Hutch Media Vault</text>
+  <text x="230" y="98" fill="url(#txt)" font-family="Segoe UI, Arial, sans-serif" font-size="62" font-weight="800" letter-spacing="2">Media Vault</text>
+  <text x="232" y="144" fill="#9ea2bf" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="600">Cameron + Hutch</text>
 </svg>
