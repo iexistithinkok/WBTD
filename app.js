@@ -13,17 +13,24 @@ const visualizer = document.getElementById('visualizer');
 
 const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.flac'];
 
+// GitHub repository containing the audio files.
+const GITHUB_OWNER = 'iexistithinkok';
+const GITHUB_REPO = 'WBTD';
+const GITHUB_AUDIO_FOLDER = 'assets';
+
 let tracks = [];
 let currentIndex = -1;
 let visualizationTimer;
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) return '0:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60)
+
+  const minutes = Math.floor(seconds / 60);
+  const secondsRemaining = Math.floor(seconds % 60)
     .toString()
     .padStart(2, '0');
-  return `${mins}:${secs}`;
+
+  return `${minutes}:${secondsRemaining}`;
 }
 
 function prettifyTitle(filename) {
@@ -34,14 +41,18 @@ function prettifyTitle(filename) {
     .trim();
 }
 
-function isAudioFile(name) {
-  const lower = name.toLowerCase();
-  return AUDIO_EXTENSIONS.some((ext) => lower.endsWith(ext));
+function isAudioFile(filename) {
+  const lowerFilename = filename.toLowerCase();
+
+  return AUDIO_EXTENSIONS.some((extension) =>
+    lowerFilename.endsWith(extension)
+  );
 }
 
 function renderVisualizer() {
   visualizer.innerHTML = '';
-  for (let i = 0; i < 30; i += 1) {
+
+  for (let index = 0; index < 30; index += 1) {
     const bar = document.createElement('span');
     bar.style.height = `${18 + Math.random() * 42}px`;
     visualizer.appendChild(bar);
@@ -50,10 +61,12 @@ function renderVisualizer() {
 
 function runVisualizer(active) {
   clearInterval(visualizationTimer);
+
   if (!active) {
     [...visualizer.children].forEach((bar) => {
       bar.style.height = '18px';
     });
+
     return;
   }
 
@@ -66,54 +79,94 @@ function runVisualizer(active) {
 
 function setTrack(index) {
   if (!tracks.length) return;
+
   currentIndex = (index + tracks.length) % tracks.length;
+
   const track = tracks[currentIndex];
+
   audio.src = track.url;
+  audio.load();
+
   titleElement.textContent = track.title;
   metaElement.textContent = track.filename;
 
-  [...playlistElement.children].forEach((li, liIndex) => {
-    li.classList.toggle('active', liIndex === currentIndex);
+  [...playlistElement.children].forEach((listItem, listItemIndex) => {
+    listItem.classList.toggle(
+      'active',
+      listItemIndex === currentIndex
+    );
   });
 }
 
 async function loadFromGitHubApi() {
-  const hostname = window.location.hostname;
-  if (!hostname.endsWith('github.io')) return [];
+  const apiUrl =
+    `https://api.github.com/repos/${GITHUB_OWNER}/` +
+    `${GITHUB_REPO}/contents/${GITHUB_AUDIO_FOLDER}`;
 
-  const owner = hostname.split('.')[0];
-  const pathParts = window.location.pathname.split('/').filter(Boolean);
-  const repo = pathParts[0];
-  if (!owner || !repo) return [];
+  try {
+    const response = await fetch(apiUrl, {
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.github+json'
+      }
+    });
 
-  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/assets`);
-  if (!response.ok) return [];
+    if (!response.ok) {
+      throw new Error(`GitHub returned status ${response.status}`);
+    }
 
-  const files = await response.json();
-  return files
-    .filter((file) => file.type === 'file' && isAudioFile(file.name))
-    .map((file) => ({
-      title: prettifyTitle(file.name),
-      filename: file.name,
-      url: file.download_url
-    }));
+    const files = await response.json();
+
+    if (!Array.isArray(files)) {
+      throw new Error('GitHub did not return a file list.');
+    }
+
+    return files
+      .filter(
+        (file) =>
+          file.type === 'file' &&
+          isAudioFile(file.name) &&
+          file.download_url
+      )
+      .map((file) => ({
+        title: prettifyTitle(file.name),
+        filename: file.name,
+        url: file.download_url
+      }));
+  } catch (error) {
+    console.warn('Could not load tracks from GitHub:', error);
+    return [];
+  }
 }
 
 async function loadFromAssetsIndex() {
-  const response = await fetch('assets/index.json', { cache: 'no-store' });
-  if (!response.ok) return [];
+  try {
+    const response = await fetch('assets/index.json', {
+      cache: 'no-store'
+    });
 
-  const data = await response.json();
-  const files = Array.isArray(data) ? data : data.tracks;
-  if (!Array.isArray(files)) return [];
+    if (!response.ok) return [];
 
-  return files
-    .filter((name) => typeof name === 'string' && isAudioFile(name))
-    .map((name) => ({
-      title: prettifyTitle(name),
-      filename: name,
-      url: `assets/${encodeURIComponent(name)}`
-    }));
+    const data = await response.json();
+    const filenames = Array.isArray(data) ? data : data.tracks;
+
+    if (!Array.isArray(filenames)) return [];
+
+    return filenames
+      .filter(
+        (filename) =>
+          typeof filename === 'string' &&
+          isAudioFile(filename)
+      )
+      .map((filename) => ({
+        title: prettifyTitle(filename),
+        filename,
+        url: `assets/${encodeURIComponent(filename)}`
+      }));
+  } catch (error) {
+    console.warn('Could not load assets/index.json:', error);
+    return [];
+  }
 }
 
 function renderPlaylist() {
@@ -121,20 +174,30 @@ function renderPlaylist() {
 
   if (!tracks.length) {
     titleElement.textContent = 'No tracks found';
-    metaElement.textContent = 'Add audio files to /assets (or update assets/index.json).';
+    metaElement.textContent =
+      'Unable to load the music library. Please try Refresh tracks.';
+
     return;
   }
 
   tracks.forEach((track, index) => {
     const item = document.createElement('li');
+
     item.textContent = track.title;
     item.title = track.filename;
+
     item.addEventListener('click', async () => {
       setTrack(index);
-      await audio.play();
-      playButton.textContent = '⏸';
-      runVisualizer(true);
+
+      try {
+        await audio.play();
+      } catch (error) {
+        console.error('Unable to play this track:', error);
+        metaElement.textContent =
+          `Unable to play: ${track.filename}`;
+      }
     });
+
     playlistElement.appendChild(item);
   });
 
@@ -142,9 +205,27 @@ function renderPlaylist() {
 }
 
 async function loadTracks() {
-  const githubTracks = await loadFromGitHubApi();
-  tracks = githubTracks.length ? githubTracks : await loadFromAssetsIndex();
-  tracks.sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true, sensitivity: 'base' }));
+  titleElement.textContent = 'Loading music library…';
+  metaElement.textContent = 'Scanning the GitHub assets folder.';
+
+  let loadedTracks = await loadFromGitHubApi();
+
+  // Use index.json only if the GitHub API is temporarily unavailable.
+  if (!loadedTracks.length) {
+    loadedTracks = await loadFromAssetsIndex();
+  }
+
+  tracks = loadedTracks.sort((firstTrack, secondTrack) =>
+    firstTrack.filename.localeCompare(
+      secondTrack.filename,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: 'base'
+      }
+    )
+  );
+
   renderPlaylist();
 }
 
@@ -152,34 +233,50 @@ playButton.addEventListener('click', async () => {
   if (!tracks.length) return;
 
   if (audio.paused) {
-    if (currentIndex < 0) setTrack(0);
-    await audio.play();
-    playButton.textContent = '⏸';
-    runVisualizer(true);
+    if (currentIndex < 0) {
+      setTrack(0);
+    }
+
+    try {
+      await audio.play();
+    } catch (error) {
+      console.error('Unable to play this track:', error);
+
+      metaElement.textContent =
+        'This audio file could not be played.';
+    }
   } else {
     audio.pause();
-    playButton.textContent = '▶';
-    runVisualizer(false);
   }
 });
 
 prevButton.addEventListener('click', async () => {
   if (!tracks.length) return;
+
   setTrack(currentIndex - 1);
-  await audio.play();
-  playButton.textContent = '⏸';
-  runVisualizer(true);
+
+  try {
+    await audio.play();
+  } catch (error) {
+    console.error('Unable to play the previous track:', error);
+  }
 });
 
 nextButton.addEventListener('click', async () => {
   if (!tracks.length) return;
+
   setTrack(currentIndex + 1);
-  await audio.play();
-  playButton.textContent = '⏸';
-  runVisualizer(true);
+
+  try {
+    await audio.play();
+  } catch (error) {
+    console.error('Unable to play the next track:', error);
+  }
 });
 
-refreshButton.addEventListener('click', loadTracks);
+refreshButton.addEventListener('click', () => {
+  loadTracks();
+});
 
 audio.addEventListener('loadedmetadata', () => {
   durationElement.textContent = formatTime(audio.duration);
@@ -187,21 +284,32 @@ audio.addEventListener('loadedmetadata', () => {
 
 audio.addEventListener('timeupdate', () => {
   if (audio.duration) {
-    seek.value = String((audio.currentTime / audio.duration) * 100);
+    seek.value = String(
+      (audio.currentTime / audio.duration) * 100
+    );
   }
-  currentTimeElement.textContent = formatTime(audio.currentTime);
+
+  currentTimeElement.textContent =
+    formatTime(audio.currentTime);
 });
 
 seek.addEventListener('input', () => {
   if (!audio.duration) return;
+
   const percentage = Number(seek.value) / 100;
   audio.currentTime = audio.duration * percentage;
 });
 
 audio.addEventListener('ended', async () => {
   if (!tracks.length) return;
+
   setTrack(currentIndex + 1);
-  await audio.play();
+
+  try {
+    await audio.play();
+  } catch (error) {
+    console.error('Unable to advance to the next track:', error);
+  }
 });
 
 audio.addEventListener('pause', () => {
@@ -214,6 +322,16 @@ audio.addEventListener('pause', () => {
 audio.addEventListener('play', () => {
   playButton.textContent = '⏸';
   runVisualizer(true);
+});
+
+audio.addEventListener('error', () => {
+  playButton.textContent = '▶';
+  runVisualizer(false);
+
+  if (currentIndex >= 0 && tracks[currentIndex]) {
+    metaElement.textContent =
+      `Unable to load: ${tracks[currentIndex].filename}`;
+  }
 });
 
 renderVisualizer();
