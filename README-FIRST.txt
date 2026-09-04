@@ -1,8 +1,10 @@
-BIG4ARTS JUKEBOX V4 — BRANDED PLAYER INSTALLATION
+BIG4ARTS JUKEBOX V5 — CURVED TITLE MARQUEE INSTALLATION
 ================================
 
-This revision keeps the automatic GitHub music-library scanner and replaces the
-frozen artwork graphics with a real audio-reactive waveform and spectrum.
+This revision keeps the full Big4Arts jukebox player, cleans up the words inside
+the glass, and makes the neon react to the music. NOW PLAYING and the song title
+now share two balanced curves, and the duplicate raw MP3 filename has been
+removed from the display.
 
 FILES IN THIS PACKAGE
 ---------------------
@@ -22,6 +24,10 @@ HOW TO INSTALL IT ON YOUR EXISTING GITHUB PAGES SITE
 6. Commit the changes to the main branch.
 7. Allow GitHub Pages a few minutes to publish, then reload music.big4arts.com.
 
+The image file itself has not changed in Version 5. If
+jukebox-frame-clean-v4.png is already in the repository, the three files that
+must be replaced are index.html, styles.css, and app.js.
+
 IMPORTANT
 ---------
 The player is currently configured for this music source:
@@ -40,12 +46,16 @@ WHAT THE NEW PLAYER DOES
 - Remembers the listener's last selected song.
 - Supports play, pause, previous, next, seeking, and automatic next-song playback.
 - Draws a real waveform and frequency spectrum from the song that is playing.
+- Drives the jukebox halo, chrome, title glow, and play light from the song's bass.
+- Settles into a slow neon breathing glow whenever the music is paused.
 - Curves every song title inside the glass and automatically fits longer names.
+- Curves NOW PLAYING above the song title as one centered neon marquee.
+- Removes the duplicate raw MP3 filename so the title has room to breathe.
 - Adds a prominent link back to big4arts.com and strengthens Big4Arts branding.
 - Adds phone media controls where supported.
 - Adapts the jukebox and song selector for desktop, tablet, and phone screens.
 
 No domain or DNS changes are required.
 
-The older jukebox-frame files may remain in the repository. Version 4 does not
+The older jukebox-frame files may remain in the repository. Version 5 does not
 reference them, so they cannot appear in the player.

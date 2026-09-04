@@ -21,7 +21,6 @@ const elements = {
   trackTitle: document.querySelector("#track-title"),
   trackTitleText: document.querySelector("#track-title-text"),
   trackTitleAccessible: document.querySelector("#track-title-accessible"),
-  trackMeta: document.querySelector("#track-meta"),
   playButton: document.querySelector("#play-btn"),
   previousButton: document.querySelector("#prev-btn"),
   nextButton: document.querySelector("#next-btn"),
@@ -45,6 +44,7 @@ const state = {
   waveformData: null,
   animationFrame: null,
   titleFitFrame: null,
+  neonEnergy: 0,
 };
 
 function isAudioFile(filename) {
@@ -220,14 +220,14 @@ function setTrackTitle(title) {
   elements.trackTitle.textContent = title;
   elements.trackTitleAccessible.textContent = title;
 
-  const titleSize = title.length > 48 ? 16 : title.length > 36 ? 18 : title.length > 25 ? 20 : 22;
+  const titleSize = title.length > 50 ? 14.5 : title.length > 40 ? 16.5 : title.length > 30 ? 18.5 : 21.5;
   elements.trackTitleText.style.fontSize = `${titleSize}px`;
   elements.trackTitleText.removeAttribute("textLength");
   elements.trackTitleText.removeAttribute("lengthAdjust");
 
   if (state.titleFitFrame) window.cancelAnimationFrame(state.titleFitFrame);
   state.titleFitFrame = window.requestAnimationFrame(() => {
-    const maximumLength = 320;
+    const maximumLength = 342;
     if (elements.trackTitleText.getComputedTextLength() > maximumLength) {
       elements.trackTitleText.setAttribute("textLength", String(maximumLength));
       elements.trackTitleText.setAttribute("lengthAdjust", "spacingAndGlyphs");
@@ -257,7 +257,6 @@ async function selectTrack(index, shouldPlay = true) {
   state.currentIndex = normalizedIndex;
 
   setTrackTitle(track.title);
-  elements.trackMeta.textContent = track.filename;
   elements.currentTime.textContent = "0:00";
   elements.duration.textContent = "0:00";
   elements.seek.value = "0";
@@ -311,7 +310,6 @@ async function loadLibrary(forceRefresh = false) {
     state.tracks = [];
     elements.playlist.replaceChildren();
     setTrackTitle("The Music Vault is resting");
-    elements.trackMeta.textContent = "Please try Refresh in a moment";
     setLibraryStatus("The song list could not be loaded. Please press Refresh.", true);
     elements.trackCount.textContent = "Music connection unavailable";
   } finally {
@@ -393,6 +391,16 @@ function canvasSurface() {
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, bounds.width, bounds.height);
   return { context, width: bounds.width, height: bounds.height };
+}
+
+function setNeonEnergy(energy = 0, isLive = false) {
+  const safeEnergy = Math.min(1, Math.max(0, energy));
+  const glow = Math.pow(safeEnergy, 0.72);
+
+  elements.jukebox.style.setProperty("--frame-brightness", (isLive ? 1.03 + glow * 0.22 : 1).toFixed(3));
+  elements.jukebox.style.setProperty("--frame-saturation", (isLive ? 1.04 + glow * 0.32 : 1).toFixed(3));
+  elements.jukebox.style.setProperty("--neon-alpha", (isLive ? 0.34 + glow * 0.58 : 0.24).toFixed(3));
+  elements.jukebox.style.setProperty("--beat-scale", (isLive ? 1 + glow * 0.008 : 1).toFixed(4));
 }
 
 function drawSpectrum(context, width, height, frequencyData) {
@@ -485,6 +493,8 @@ function drawIdleVisualizer() {
 
   drawSpectrum(context, width, height, idleSpectrum);
   drawWaveform(context, width, height, idleWave);
+  state.neonEnergy = 0;
+  setNeonEnergy(0, false);
 }
 
 function drawLiveVisualizer() {
@@ -496,6 +506,16 @@ function drawLiveVisualizer() {
 
   state.analyser.getByteFrequencyData(state.frequencyData);
   state.analyser.getByteTimeDomainData(state.waveformData);
+
+  const bassBins = Math.min(24, state.frequencyData.length);
+  let bassTotal = 0;
+  for (let index = 2; index < bassBins; index += 1) {
+    bassTotal += state.frequencyData[index];
+  }
+  const bassEnergy = bassTotal / Math.max(1, bassBins - 2) / 255;
+  state.neonEnergy = state.neonEnergy * 0.76 + bassEnergy * 0.24;
+  setNeonEnergy(state.neonEnergy, true);
+
   const { context, width, height } = canvasSurface();
   drawSpectrum(context, width, height, state.frequencyData);
   drawWaveform(context, width, height, state.waveformData);

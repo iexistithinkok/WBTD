@@ -11,7 +11,7 @@
     <title>Big4Arts Music Vault</title>
     <link rel="preconnect" href="https://api.github.com" />
     <link rel="preconnect" href="https://raw.githubusercontent.com" />
-    <link rel="stylesheet" href="styles.css?v=4" />
+    <link rel="stylesheet" href="styles.css?v=5" />
   </head>
 
   <body>
@@ -52,19 +52,26 @@
 
             <div class="player-overlay">
               <div class="now-playing" aria-live="polite">
-                <p>Now playing</p>
                 <h2 id="track-title-accessible" class="visually-hidden">
                   Loading the Music Vault…
                 </h2>
                 <svg
                   class="track-title-arc"
-                  viewBox="0 0 400 110"
+                  viewBox="0 0 400 132"
                   aria-hidden="true"
                   focusable="false"
                 >
                   <defs>
-                    <path id="track-title-curve" d="M 34 94 Q 200 18 366 94" />
+                    <path id="now-playing-curve" d="M 92 56 Q 200 20 308 56" />
+                    <path id="track-title-curve" d="M 26 112 Q 200 48 374 112" />
                   </defs>
+                  <text class="now-playing-label">
+                    <textPath
+                      href="#now-playing-curve"
+                      startOffset="50%"
+                      text-anchor="middle"
+                    >NOW PLAYING</textPath>
+                  </text>
                   <text id="track-title-text" class="track-title-text">
                     <textPath
                       id="track-title"
@@ -74,7 +81,6 @@
                     >Loading the Music Vault…</textPath>
                   </text>
                 </svg>
-                <span id="track-meta">Scanning the complete music library</span>
               </div>
 
               <canvas
@@ -169,6 +175,6 @@
     </main>
 
     <audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>
