@@ -1,22 +1,23 @@
-BIG4ARTS JUKEBOX — INSTALLATION
+BIG4ARTS JUKEBOX V2 — INSTALLATION
 ================================
 
-This package replaces the look of the Cameron & Hutch Music Vault while keeping
-the automatic GitHub music-library scanner.
+This revision keeps the automatic GitHub music-library scanner and replaces the
+frozen artwork graphics with a real audio-reactive waveform and spectrum.
 
 FILES IN THIS PACKAGE
 ---------------------
 index.html
 styles.css
 app.js
-ui-assets/jukebox-frame.png
+jukebox-frame.png
 
 HOW TO INSTALL IT ON YOUR EXISTING GITHUB PAGES SITE
 ----------------------------------------------------
 1. Open the GitHub repository that currently publishes music.big4arts.com.
 2. Upload index.html, styles.css, and app.js to the repository's main folder.
 3. When GitHub asks, approve replacing the older files with these new files.
-4. Upload the complete ui-assets folder beside those three files.
+4. Upload jukebox-frame.png beside those three files in the same main folder.
+   Replace the older jukebox-frame.png when GitHub asks.
 5. Leave your existing assets folder and every MP3 inside it exactly where they are.
 6. Commit the changes to the main branch.
 7. Allow GitHub Pages a few minutes to publish, then reload music.big4arts.com.
@@ -38,6 +39,7 @@ WHAT THE NEW PLAYER DOES
 - Keeps a short session cache to reduce GitHub request limits.
 - Remembers the listener's last selected song.
 - Supports play, pause, previous, next, seeking, and automatic next-song playback.
+- Draws a real waveform and frequency spectrum from the song that is playing.
 - Adds phone media controls where supported.
 - Adapts the jukebox and song selector for desktop, tablet, and phone screens.
 

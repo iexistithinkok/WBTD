@@ -260,26 +260,13 @@ button {
 
 .visualizer {
   position: absolute;
-  top: 43%;
-  left: 8%;
-  width: 84%;
-  height: 18%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2.2%;
-  opacity: 0.72;
+  top: 28%;
+  left: 4%;
+  width: 92%;
+  height: 52%;
+  opacity: 0.92;
   pointer-events: none;
   mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
-}
-
-.visualizer span {
-  width: 3%;
-  min-height: 5px;
-  border-radius: 999px;
-  background: linear-gradient(to top, var(--pink), var(--violet), var(--cyan));
-  box-shadow: 0 0 10px rgba(38, 231, 255, 0.65);
-  transition: height 160ms ease;
 }
 
 .transport {

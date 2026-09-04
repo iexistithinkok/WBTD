@@ -36,7 +36,12 @@ const elements = {
 const state = {
   tracks: [],
   currentIndex: -1,
-  visualizerTimer: null,
+  audioContext: null,
+  analyser: null,
+  sourceNode: null,
+  frequencyData: null,
+  waveformData: null,
+  animationFrame: null,
 };
 
 function isAudioFile(filename) {
@@ -298,6 +303,7 @@ function togglePlayback() {
   }
 
   if (elements.audio.paused) {
+    ensureAudioAnalyzer();
     elements.audio.play().catch((error) => {
       console.error(error);
       setLibraryStatus("This browser could not start the song. Please choose it again.", true);
@@ -316,46 +322,190 @@ function updatePlayingState(isPlaying) {
   else stopVisualizer();
 }
 
-function createVisualizer() {
-  const fragment = document.createDocumentFragment();
-  for (let index = 0; index < 24; index += 1) {
-    const bar = document.createElement("span");
-    bar.style.height = `${12 + ((index * 13) % 32)}%`;
-    fragment.append(bar);
+function ensureAudioAnalyzer() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return false;
+
+  if (!state.audioContext) {
+    try {
+      state.audioContext = new AudioContextClass();
+      state.analyser = state.audioContext.createAnalyser();
+      state.analyser.fftSize = 512;
+      state.analyser.minDecibels = -92;
+      state.analyser.maxDecibels = -12;
+      state.analyser.smoothingTimeConstant = 0.78;
+      state.sourceNode = state.audioContext.createMediaElementSource(elements.audio);
+      state.sourceNode.connect(state.analyser);
+      state.analyser.connect(state.audioContext.destination);
+      state.frequencyData = new Uint8Array(state.analyser.frequencyBinCount);
+      state.waveformData = new Uint8Array(state.analyser.fftSize);
+    } catch (error) {
+      console.warn("Audio-reactive visualization is unavailable.", error);
+      state.audioContext = null;
+      state.analyser = null;
+      return false;
+    }
   }
-  elements.visualizer.replaceChildren(fragment);
+
+  if (state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch((error) => console.warn("Audio display could not resume.", error));
+  }
+
+  return true;
 }
 
-function animateVisualizer() {
-  elements.visualizer.querySelectorAll("span").forEach((bar, index) => {
-    const wave = Math.sin(Date.now() / 240 + index * 0.72) * 19;
-    const variation = Math.random() * 34;
-    bar.style.height = `${Math.max(8, Math.min(94, 38 + wave + variation))}%`;
-  });
+function canvasSurface() {
+  const canvas = elements.visualizer;
+  const bounds = canvas.getBoundingClientRect();
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelWidth = Math.max(1, Math.round(bounds.width * ratio));
+  const pixelHeight = Math.max(1, Math.round(bounds.height * ratio));
+
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+  }
+
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, bounds.width, bounds.height);
+  return { context, width: bounds.width, height: bounds.height };
+}
+
+function drawSpectrum(context, width, height, frequencyData) {
+  const barCount = 38;
+  const startX = width * 0.1;
+  const spectrumWidth = width * 0.8;
+  const gap = Math.max(1.2, width * 0.005);
+  const barWidth = Math.max(2, (spectrumWidth - gap * (barCount - 1)) / barCount);
+  const baseline = height * 0.9;
+  const maximumHeight = height * 0.42;
+
+  context.save();
+  context.globalCompositeOperation = "screen";
+
+  for (let index = 0; index < barCount; index += 1) {
+    const dataIndex = Math.min(
+      frequencyData.length - 1,
+      Math.floor(2 + Math.pow(index / barCount, 1.45) * frequencyData.length * 0.62),
+    );
+    const strength = frequencyData[dataIndex] / 255;
+    const barHeight = Math.max(3, Math.pow(strength, 1.35) * maximumHeight);
+    const x = startX + index * (barWidth + gap);
+    const hue = 188 + (index / (barCount - 1)) * 126;
+    const color = `hsla(${hue}, 100%, 62%, 0.96)`;
+
+    context.fillStyle = color;
+    context.shadowColor = color;
+    context.shadowBlur = Math.max(4, width * 0.012);
+    context.fillRect(x, baseline - barHeight, barWidth, barHeight);
+
+    context.globalAlpha = 0.19;
+    context.fillRect(x, baseline + 3, barWidth, barHeight * 0.2);
+    context.globalAlpha = 1;
+  }
+
+  context.restore();
+}
+
+function drawWaveform(context, width, height, waveformData) {
+  const centerY = height * 0.51;
+  const amplitude = height * 0.16;
+  const horizontalGradient = context.createLinearGradient(0, 0, width, 0);
+  horizontalGradient.addColorStop(0, "rgba(38, 231, 255, 0)");
+  horizontalGradient.addColorStop(0.12, "#26e7ff");
+  horizontalGradient.addColorStop(0.5, "#ff4ad8");
+  horizontalGradient.addColorStop(0.88, "#26e7ff");
+  horizontalGradient.addColorStop(1, "rgba(38, 231, 255, 0)");
+
+  context.save();
+  context.strokeStyle = "rgba(38, 231, 255, 0.2)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(width * 0.06, centerY);
+  context.lineTo(width * 0.94, centerY);
+  context.stroke();
+
+  const drawLine = (lineWidth, alpha, blur) => {
+    context.beginPath();
+    for (let index = 0; index < waveformData.length; index += 1) {
+      const x = (index / (waveformData.length - 1)) * width;
+      const normalized = waveformData[index] / 128 - 1;
+      const y = centerY + normalized * amplitude;
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
+    context.globalAlpha = alpha;
+    context.strokeStyle = horizontalGradient;
+    context.lineWidth = lineWidth;
+    context.shadowColor = "#ff3fd4";
+    context.shadowBlur = blur;
+    context.stroke();
+  };
+
+  drawLine(Math.max(5, width * 0.015), 0.24, 22);
+  drawLine(Math.max(1.6, width * 0.0045), 1, 9);
+  context.restore();
+}
+
+function drawIdleVisualizer() {
+  const { context, width, height } = canvasSurface();
+  const idleWave = new Uint8Array(256);
+  const idleSpectrum = new Uint8Array(128);
+
+  for (let index = 0; index < idleWave.length; index += 1) {
+    idleWave[index] = 128 + Math.sin(index * 0.18) * 2;
+  }
+  for (let index = 0; index < idleSpectrum.length; index += 1) {
+    idleSpectrum[index] = 22 + Math.sin(index * 0.53) * 11;
+  }
+
+  drawSpectrum(context, width, height, idleSpectrum);
+  drawWaveform(context, width, height, idleWave);
+}
+
+function drawLiveVisualizer() {
+  if (!state.analyser || elements.audio.paused) {
+    state.animationFrame = null;
+    drawIdleVisualizer();
+    return;
+  }
+
+  state.analyser.getByteFrequencyData(state.frequencyData);
+  state.analyser.getByteTimeDomainData(state.waveformData);
+  const { context, width, height } = canvasSurface();
+  drawSpectrum(context, width, height, state.frequencyData);
+  drawWaveform(context, width, height, state.waveformData);
+  state.animationFrame = window.requestAnimationFrame(drawLiveVisualizer);
 }
 
 function startVisualizer() {
-  if (state.visualizerTimer) return;
-  animateVisualizer();
-  state.visualizerTimer = window.setInterval(animateVisualizer, 170);
+  ensureAudioAnalyzer();
+  if (state.animationFrame) return;
+  state.animationFrame = window.requestAnimationFrame(drawLiveVisualizer);
 }
 
 function stopVisualizer() {
-  window.clearInterval(state.visualizerTimer);
-  state.visualizerTimer = null;
-  elements.visualizer.querySelectorAll("span").forEach((bar, index) => {
-    bar.style.height = `${12 + ((index * 13) % 32)}%`;
-  });
+  if (state.animationFrame) window.cancelAnimationFrame(state.animationFrame);
+  state.animationFrame = null;
+  drawIdleVisualizer();
 }
 
 elements.playButton.addEventListener("click", togglePlayback);
-elements.previousButton.addEventListener("click", () => selectTrack(state.currentIndex - 1));
-elements.nextButton.addEventListener("click", () => selectTrack(state.currentIndex + 1));
+elements.previousButton.addEventListener("click", () => {
+  ensureAudioAnalyzer();
+  selectTrack(state.currentIndex - 1);
+});
+elements.nextButton.addEventListener("click", () => {
+  ensureAudioAnalyzer();
+  selectTrack(state.currentIndex + 1);
+});
 elements.refreshButton.addEventListener("click", () => loadLibrary(true));
 
 elements.playlist.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-index]");
   if (!button) return;
+  ensureAudioAnalyzer();
   selectTrack(Number(button.dataset.index));
 });
 
@@ -391,10 +541,19 @@ elements.audio.addEventListener("error", () => {
 
 if ("mediaSession" in navigator) {
   const mediaActions = {
-    play: () => elements.audio.play(),
+    play: () => {
+      ensureAudioAnalyzer();
+      elements.audio.play();
+    },
     pause: () => elements.audio.pause(),
-    previoustrack: () => selectTrack(state.currentIndex - 1),
-    nexttrack: () => selectTrack(state.currentIndex + 1),
+    previoustrack: () => {
+      ensureAudioAnalyzer();
+      selectTrack(state.currentIndex - 1);
+    },
+    nexttrack: () => {
+      ensureAudioAnalyzer();
+      selectTrack(state.currentIndex + 1);
+    },
   };
 
   Object.entries(mediaActions).forEach(([action, handler]) => {
@@ -406,5 +565,9 @@ if ("mediaSession" in navigator) {
   });
 }
 
-createVisualizer();
+window.addEventListener("resize", () => {
+  if (elements.audio.paused) window.requestAnimationFrame(drawIdleVisualizer);
+});
+
+window.requestAnimationFrame(drawIdleVisualizer);
 loadLibrary();
