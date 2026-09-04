@@ -1,338 +1,410 @@
-const audio = document.getElementById('audio');
-const playlistElement = document.getElementById('playlist');
-const titleElement = document.getElementById('track-title');
-const metaElement = document.getElementById('track-meta');
-const playButton = document.getElementById('play-btn');
-const prevButton = document.getElementById('prev-btn');
-const nextButton = document.getElementById('next-btn');
-const refreshButton = document.getElementById('refresh-btn');
-const seek = document.getElementById('seek');
-const currentTimeElement = document.getElementById('current-time');
-const durationElement = document.getElementById('duration');
-const visualizer = document.getElementById('visualizer');
+"use strict";
 
-const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.flac'];
+/*
+  BIG4ARTS MUSIC VAULT
+  If the music repository ever changes, update only this configuration block.
+*/
+const CONFIG = {
+  owner: "iexistithinkok",
+  repository: "WBTD",
+  branch: "main",
+  assetsPath: "assets",
+  cacheMinutes: 10,
+};
 
-// GitHub repository containing the audio files.
-const GITHUB_OWNER = 'iexistithinkok';
-const GITHUB_REPO = 'WBTD';
-const GITHUB_AUDIO_FOLDER = 'assets';
+const AUDIO_EXTENSIONS = [".mp3", ".m4a", ".wav", ".ogg", ".aac"];
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
-let tracks = [];
-let currentIndex = -1;
-let visualizationTimer;
+const elements = {
+  audio: document.querySelector("#audio"),
+  jukebox: document.querySelector("#jukebox"),
+  trackTitle: document.querySelector("#track-title"),
+  trackMeta: document.querySelector("#track-meta"),
+  playButton: document.querySelector("#play-btn"),
+  previousButton: document.querySelector("#prev-btn"),
+  nextButton: document.querySelector("#next-btn"),
+  seek: document.querySelector("#seek"),
+  currentTime: document.querySelector("#current-time"),
+  duration: document.querySelector("#duration"),
+  visualizer: document.querySelector("#visualizer"),
+  playlist: document.querySelector("#playlist"),
+  refreshButton: document.querySelector("#refresh-btn"),
+  libraryStatus: document.querySelector("#library-status"),
+  trackCount: document.querySelector("#track-count"),
+};
 
-function formatTime(seconds) {
-  if (!Number.isFinite(seconds)) return '0:00';
+const state = {
+  tracks: [],
+  currentIndex: -1,
+  visualizerTimer: null,
+};
 
-  const minutes = Math.floor(seconds / 60);
-  const secondsRemaining = Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, '0');
-
-  return `${minutes}:${secondsRemaining}`;
+function isAudioFile(filename) {
+  const lowerName = filename.toLowerCase();
+  return AUDIO_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
 }
 
-function prettifyTitle(filename) {
-  return filename
-    .replace(/\.[a-z0-9]+$/i, '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
+function cleanTitle(filename) {
+  let decodedName = filename;
+
+  try {
+    decodedName = decodeURIComponent(filename);
+  } catch {
+    // Keep the original filename if it is not URI encoded.
+  }
+
+  return decodedName
+    .replace(/\.(mp3|m4a|wav|ogg|aac)$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+MP3$/i, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-function isAudioFile(filename) {
-  const lowerFilename = filename.toLowerCase();
-
-  return AUDIO_EXTENSIONS.some((extension) =>
-    lowerFilename.endsWith(extension)
-  );
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const wholeSeconds = Math.floor(seconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainder = String(wholeSeconds % 60).padStart(2, "0");
+  return `${minutes}:${remainder}`;
 }
 
-function renderVisualizer() {
-  visualizer.innerHTML = '';
+function apiHeaders() {
+  return {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
 
-  for (let index = 0; index < 30; index += 1) {
-    const bar = document.createElement('span');
-    bar.style.height = `${18 + Math.random() * 42}px`;
-    visualizer.appendChild(bar);
+function rawTrackUrl(path) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repository}/${CONFIG.branch}/${encodedPath}`;
+}
+
+function normalizeTracks(files) {
+  return files
+    .filter((file) => file.type === "file" && isAudioFile(file.name))
+    .map((file) => ({
+      filename: file.name,
+      title: cleanTitle(file.name),
+      url: file.download_url || rawTrackUrl(file.path),
+    }))
+    .sort((a, b) => collator.compare(a.title, b.title));
+}
+
+async function fetchFromContentsApi() {
+  const path = CONFIG.assetsPath.split("/").map(encodeURIComponent).join("/");
+  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repository}/contents/${path}?ref=${encodeURIComponent(CONFIG.branch)}`;
+  const response = await fetch(url, { headers: apiHeaders() });
+
+  if (!response.ok) {
+    throw new Error(`Contents request failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload)) throw new Error("Unexpected contents response");
+  return normalizeTracks(payload);
+}
+
+async function fetchFromTreeApi() {
+  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repository}/git/trees/${encodeURIComponent(CONFIG.branch)}?recursive=1`;
+  const response = await fetch(url, { headers: apiHeaders() });
+
+  if (!response.ok) {
+    throw new Error(`Tree request failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const prefix = `${CONFIG.assetsPath.replace(/\/$/, "")}/`;
+  const files = (payload.tree || [])
+    .filter((entry) => entry.type === "blob" && entry.path.startsWith(prefix))
+    .map((entry) => ({
+      type: "file",
+      path: entry.path,
+      name: entry.path.slice(prefix.length),
+      download_url: rawTrackUrl(entry.path),
+    }))
+    .filter((entry) => !entry.name.includes("/"));
+
+  return normalizeTracks(files);
+}
+
+function readTrackCache() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem("big4arts-track-cache"));
+    const maxAge = CONFIG.cacheMinutes * 60 * 1000;
+    if (!cached || Date.now() - cached.savedAt > maxAge || !Array.isArray(cached.tracks)) {
+      return null;
+    }
+    return cached.tracks;
+  } catch {
+    return null;
   }
 }
 
-function runVisualizer(active) {
-  clearInterval(visualizationTimer);
-
-  if (!active) {
-    [...visualizer.children].forEach((bar) => {
-      bar.style.height = '18px';
-    });
-
-    return;
-  }
-
-  visualizationTimer = setInterval(() => {
-    [...visualizer.children].forEach((bar) => {
-      bar.style.height = `${18 + Math.random() * 42}px`;
-    });
-  }, 180);
-}
-
-function setTrack(index) {
-  if (!tracks.length) return;
-
-  currentIndex = (index + tracks.length) % tracks.length;
-
-  const track = tracks[currentIndex];
-
-  audio.src = track.url;
-  audio.load();
-
-  titleElement.textContent = track.title;
-  metaElement.textContent = track.filename;
-
-  [...playlistElement.children].forEach((listItem, listItemIndex) => {
-    listItem.classList.toggle(
-      'active',
-      listItemIndex === currentIndex
+function writeTrackCache(tracks) {
+  try {
+    sessionStorage.setItem(
+      "big4arts-track-cache",
+      JSON.stringify({ savedAt: Date.now(), tracks }),
     );
-  });
-}
-
-async function loadFromGitHubApi() {
-  const apiUrl =
-    `https://api.github.com/repos/${GITHUB_OWNER}/` +
-    `${GITHUB_REPO}/contents/${GITHUB_AUDIO_FOLDER}`;
-
-  try {
-    const response = await fetch(apiUrl, {
-      cache: 'no-store',
-      headers: {
-        Accept: 'application/vnd.github+json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub returned status ${response.status}`);
-    }
-
-    const files = await response.json();
-
-    if (!Array.isArray(files)) {
-      throw new Error('GitHub did not return a file list.');
-    }
-
-    return files
-      .filter(
-        (file) =>
-          file.type === 'file' &&
-          isAudioFile(file.name) &&
-          file.download_url
-      )
-      .map((file) => ({
-        title: prettifyTitle(file.name),
-        filename: file.name,
-        url: file.download_url
-      }));
-  } catch (error) {
-    console.warn('Could not load tracks from GitHub:', error);
-    return [];
+  } catch {
+    // The player still works if private browsing blocks session storage.
   }
 }
 
-async function loadFromAssetsIndex() {
-  try {
-    const response = await fetch('assets/index.json', {
-      cache: 'no-store'
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const filenames = Array.isArray(data) ? data : data.tracks;
-
-    if (!Array.isArray(filenames)) return [];
-
-    return filenames
-      .filter(
-        (filename) =>
-          typeof filename === 'string' &&
-          isAudioFile(filename)
-      )
-      .map((filename) => ({
-        title: prettifyTitle(filename),
-        filename,
-        url: `assets/${encodeURIComponent(filename)}`
-      }));
-  } catch (error) {
-    console.warn('Could not load assets/index.json:', error);
-    return [];
+async function discoverTracks(forceRefresh = false) {
+  if (!forceRefresh) {
+    const cachedTracks = readTrackCache();
+    if (cachedTracks?.length) return cachedTracks;
   }
+
+  try {
+    const tracks = await fetchFromContentsApi();
+    if (tracks.length) {
+      writeTrackCache(tracks);
+      return tracks;
+    }
+  } catch (contentsError) {
+    console.warn(contentsError.message);
+  }
+
+  const tracks = await fetchFromTreeApi();
+  if (tracks.length) writeTrackCache(tracks);
+  return tracks;
+}
+
+function setLibraryStatus(message, isError = false) {
+  elements.libraryStatus.textContent = message;
+  elements.libraryStatus.classList.toggle("error", isError);
 }
 
 function renderPlaylist() {
-  playlistElement.innerHTML = '';
+  const fragment = document.createDocumentFragment();
 
-  if (!tracks.length) {
-    titleElement.textContent = 'No tracks found';
-    metaElement.textContent =
-      'Unable to load the music library. Please try Refresh tracks.';
+  state.tracks.forEach((track, index) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = track.title;
+    button.title = track.title;
+    button.dataset.index = String(index);
+    button.setAttribute("aria-label", `Play ${track.title}`);
+    item.append(button);
+    fragment.append(item);
+  });
 
+  elements.playlist.replaceChildren(fragment);
+}
+
+function updateActiveTrack() {
+  const items = elements.playlist.querySelectorAll("li");
+  items.forEach((item, index) => {
+    const isActive = index === state.currentIndex;
+    item.classList.toggle("active", isActive);
+    const button = item.querySelector("button");
+    if (isActive) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+  });
+}
+
+function updateMediaSession(track) {
+  if (!("mediaSession" in navigator) || !("MediaMetadata" in window)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: "Cameron & Hutch",
+      album: "Big4Arts Music Vault",
+    });
+  } catch {
+    // Media-session metadata is an enhancement, not a playback requirement.
+  }
+}
+
+async function selectTrack(index, shouldPlay = true) {
+  if (!state.tracks.length) return;
+
+  const normalizedIndex = (index + state.tracks.length) % state.tracks.length;
+  const track = state.tracks[normalizedIndex];
+  state.currentIndex = normalizedIndex;
+
+  elements.trackTitle.textContent = track.title;
+  elements.trackMeta.textContent = track.filename;
+  elements.currentTime.textContent = "0:00";
+  elements.duration.textContent = "0:00";
+  elements.seek.value = "0";
+  elements.audio.src = track.url;
+  elements.audio.load();
+  updateActiveTrack();
+  updateMediaSession(track);
+
+  try {
+    localStorage.setItem("big4arts-last-track", track.filename);
+  } catch {
+    // Remembering the last track is optional.
+  }
+
+  if (!shouldPlay) return;
+
+  try {
+    await elements.audio.play();
+  } catch (error) {
+    console.warn("Playback needs a direct user action.", error);
+    setLibraryStatus("Press the glowing play button to begin.");
+  }
+}
+
+function restoredTrackIndex() {
+  try {
+    const lastFilename = localStorage.getItem("big4arts-last-track");
+    const index = state.tracks.findIndex((track) => track.filename === lastFilename);
+    return index >= 0 ? index : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function loadLibrary(forceRefresh = false) {
+  elements.refreshButton.disabled = true;
+  setLibraryStatus(forceRefresh ? "Refreshing the complete song list…" : "Loading the complete song list…");
+  elements.trackCount.textContent = "Connecting to the vault";
+
+  try {
+    const tracks = await discoverTracks(forceRefresh);
+    if (!tracks.length) throw new Error("No audio files were found in the assets folder.");
+
+    state.tracks = tracks;
+    renderPlaylist();
+    await selectTrack(restoredTrackIndex(), false);
+    setLibraryStatus("");
+    elements.trackCount.textContent = `${tracks.length} songs ready to play`;
+  } catch (error) {
+    console.error(error);
+    state.tracks = [];
+    elements.playlist.replaceChildren();
+    elements.trackTitle.textContent = "The Music Vault is resting";
+    elements.trackMeta.textContent = "Please try Refresh in a moment";
+    setLibraryStatus("The song list could not be loaded. Please press Refresh.", true);
+    elements.trackCount.textContent = "Music connection unavailable";
+  } finally {
+    elements.refreshButton.disabled = false;
+  }
+}
+
+function togglePlayback() {
+  if (!state.tracks.length) {
+    loadLibrary(true);
     return;
   }
 
-  tracks.forEach((track, index) => {
-    const item = document.createElement('li');
-
-    item.textContent = track.title;
-    item.title = track.filename;
-
-    item.addEventListener('click', async () => {
-      setTrack(index);
-
-      try {
-        await audio.play();
-      } catch (error) {
-        console.error('Unable to play this track:', error);
-        metaElement.textContent =
-          `Unable to play: ${track.filename}`;
-      }
+  if (elements.audio.paused) {
+    elements.audio.play().catch((error) => {
+      console.error(error);
+      setLibraryStatus("This browser could not start the song. Please choose it again.", true);
     });
-
-    playlistElement.appendChild(item);
-  });
-
-  setTrack(0);
-}
-
-async function loadTracks() {
-  titleElement.textContent = 'Loading music library…';
-  metaElement.textContent = 'Scanning the GitHub assets folder.';
-
-  let loadedTracks = await loadFromGitHubApi();
-
-  // Use index.json only if the GitHub API is temporarily unavailable.
-  if (!loadedTracks.length) {
-    loadedTracks = await loadFromAssetsIndex();
-  }
-
-  tracks = loadedTracks.sort((firstTrack, secondTrack) =>
-    firstTrack.filename.localeCompare(
-      secondTrack.filename,
-      undefined,
-      {
-        numeric: true,
-        sensitivity: 'base'
-      }
-    )
-  );
-
-  renderPlaylist();
-}
-
-playButton.addEventListener('click', async () => {
-  if (!tracks.length) return;
-
-  if (audio.paused) {
-    if (currentIndex < 0) {
-      setTrack(0);
-    }
-
-    try {
-      await audio.play();
-    } catch (error) {
-      console.error('Unable to play this track:', error);
-
-      metaElement.textContent =
-        'This audio file could not be played.';
-    }
   } else {
-    audio.pause();
+    elements.audio.pause();
   }
-});
+}
 
-prevButton.addEventListener('click', async () => {
-  if (!tracks.length) return;
+function updatePlayingState(isPlaying) {
+  elements.jukebox.classList.toggle("is-playing", isPlaying);
+  elements.playButton.setAttribute("aria-pressed", String(isPlaying));
+  elements.playButton.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
 
-  setTrack(currentIndex - 1);
+  if (isPlaying) startVisualizer();
+  else stopVisualizer();
+}
 
-  try {
-    await audio.play();
-  } catch (error) {
-    console.error('Unable to play the previous track:', error);
+function createVisualizer() {
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index < 24; index += 1) {
+    const bar = document.createElement("span");
+    bar.style.height = `${12 + ((index * 13) % 32)}%`;
+    fragment.append(bar);
   }
+  elements.visualizer.replaceChildren(fragment);
+}
+
+function animateVisualizer() {
+  elements.visualizer.querySelectorAll("span").forEach((bar, index) => {
+    const wave = Math.sin(Date.now() / 240 + index * 0.72) * 19;
+    const variation = Math.random() * 34;
+    bar.style.height = `${Math.max(8, Math.min(94, 38 + wave + variation))}%`;
+  });
+}
+
+function startVisualizer() {
+  if (state.visualizerTimer) return;
+  animateVisualizer();
+  state.visualizerTimer = window.setInterval(animateVisualizer, 170);
+}
+
+function stopVisualizer() {
+  window.clearInterval(state.visualizerTimer);
+  state.visualizerTimer = null;
+  elements.visualizer.querySelectorAll("span").forEach((bar, index) => {
+    bar.style.height = `${12 + ((index * 13) % 32)}%`;
+  });
+}
+
+elements.playButton.addEventListener("click", togglePlayback);
+elements.previousButton.addEventListener("click", () => selectTrack(state.currentIndex - 1));
+elements.nextButton.addEventListener("click", () => selectTrack(state.currentIndex + 1));
+elements.refreshButton.addEventListener("click", () => loadLibrary(true));
+
+elements.playlist.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-index]");
+  if (!button) return;
+  selectTrack(Number(button.dataset.index));
 });
 
-nextButton.addEventListener('click', async () => {
-  if (!tracks.length) return;
-
-  setTrack(currentIndex + 1);
-
-  try {
-    await audio.play();
-  } catch (error) {
-    console.error('Unable to play the next track:', error);
-  }
+elements.seek.addEventListener("input", () => {
+  if (!Number.isFinite(elements.audio.duration)) return;
+  elements.audio.currentTime = (Number(elements.seek.value) / 100) * elements.audio.duration;
 });
 
-refreshButton.addEventListener('click', () => {
-  loadTracks();
+elements.audio.addEventListener("loadedmetadata", () => {
+  elements.duration.textContent = formatTime(elements.audio.duration);
 });
 
-audio.addEventListener('loadedmetadata', () => {
-  durationElement.textContent = formatTime(audio.duration);
+elements.audio.addEventListener("timeupdate", () => {
+  const progress = Number.isFinite(elements.audio.duration)
+    ? (elements.audio.currentTime / elements.audio.duration) * 100
+    : 0;
+  elements.seek.value = String(progress || 0);
+  elements.currentTime.textContent = formatTime(elements.audio.currentTime);
+  elements.duration.textContent = formatTime(elements.audio.duration);
 });
 
-audio.addEventListener('timeupdate', () => {
-  if (audio.duration) {
-    seek.value = String(
-      (audio.currentTime / audio.duration) * 100
-    );
-  }
-
-  currentTimeElement.textContent =
-    formatTime(audio.currentTime);
+elements.audio.addEventListener("play", () => {
+  updatePlayingState(true);
+  setLibraryStatus("");
 });
 
-seek.addEventListener('input', () => {
-  if (!audio.duration) return;
-
-  const percentage = Number(seek.value) / 100;
-  audio.currentTime = audio.duration * percentage;
+elements.audio.addEventListener("pause", () => updatePlayingState(false));
+elements.audio.addEventListener("ended", () => selectTrack(state.currentIndex + 1));
+elements.audio.addEventListener("error", () => {
+  updatePlayingState(false);
+  setLibraryStatus("This song could not be played. Please choose another selection.", true);
 });
 
-audio.addEventListener('ended', async () => {
-  if (!tracks.length) return;
+if ("mediaSession" in navigator) {
+  const mediaActions = {
+    play: () => elements.audio.play(),
+    pause: () => elements.audio.pause(),
+    previoustrack: () => selectTrack(state.currentIndex - 1),
+    nexttrack: () => selectTrack(state.currentIndex + 1),
+  };
 
-  setTrack(currentIndex + 1);
+  Object.entries(mediaActions).forEach(([action, handler]) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch {
+      // Some browsers expose Media Session but support only a subset of actions.
+    }
+  });
+}
 
-  try {
-    await audio.play();
-  } catch (error) {
-    console.error('Unable to advance to the next track:', error);
-  }
-});
-
-audio.addEventListener('pause', () => {
-  if (!audio.ended) {
-    playButton.textContent = '▶';
-    runVisualizer(false);
-  }
-});
-
-audio.addEventListener('play', () => {
-  playButton.textContent = '⏸';
-  runVisualizer(true);
-});
-
-audio.addEventListener('error', () => {
-  playButton.textContent = '▶';
-  runVisualizer(false);
-
-  if (currentIndex >= 0 && tracks[currentIndex]) {
-    metaElement.textContent =
-      `Unable to load: ${tracks[currentIndex].filename}`;
-  }
-});
-
-renderVisualizer();
-loadTracks();
+createVisualizer();
+loadLibrary();

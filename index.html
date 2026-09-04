@@ -1,63 +1,147 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cameron & Hutch Music Vault</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#070511" />
+    <meta
+      name="description"
+      content="Explore original music from Cameron & Hutch in the Big4Arts Music Vault."
+    />
+    <title>Big4Arts Music Vault</title>
+    <link rel="preconnect" href="https://api.github.com" />
+    <link rel="preconnect" href="https://raw.githubusercontent.com" />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <div class="background-glow"></div>
 
-    <main class="app-shell">
-      <header>
-        <p class="eyebrow">Dynamic Audio Library</p>
-        <h1>Cameron & Hutch Music Vault</h1>
-       <p class="subhead">
-  Discography<br />
-  <a href="https://mccameron.com" target="_blank" rel="noopener noreferrer">
-    mccameron.com
-  </a>
-  &amp;
-  <a href="https://ahutch.co" target="_blank" rel="noopener noreferrer">
-    ahutch.co
-  </a>
-</p>
-        
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+    <div class="star-field" aria-hidden="true"></div>
+
+    <main class="vault-shell">
+      <header class="vault-header">
+        <div>
+          <p class="eyebrow">Cameron &amp; Hutch Music Vault</p>
+          <h1>Turn Up the Stories. <span>Hear the Future.</span></h1>
+        </div>
+
+        <nav class="creator-links" aria-label="Creator websites">
+          <a href="https://mccameron.com" target="_blank" rel="noopener noreferrer">
+            McCameron
+          </a>
+          <a href="https://ahutch.co" target="_blank" rel="noopener noreferrer">
+            A-Hutch
+          </a>
+        </nav>
       </header>
 
-      <section class="player-card">
-        <div class="now-playing">
-          <p>Now playing</p>
-          <h2 id="track-title">No track selected</h2>
-          <span id="track-meta">Waiting for tracks…</span>
+      <section class="vault-layout" aria-label="Big4Arts jukebox and song selector">
+        <div class="jukebox-stage">
+          <div class="jukebox" id="jukebox">
+            <img
+              class="jukebox-frame"
+              src="ui-assets/jukebox-frame.png"
+              alt="Futuristic neon Big4Arts jukebox"
+              width="1180"
+              height="1333"
+            />
+
+            <div class="player-overlay">
+              <div class="now-playing" aria-live="polite">
+                <p>Now playing</p>
+                <h2 id="track-title">Loading the Music Vault…</h2>
+                <span id="track-meta">Scanning the complete music library</span>
+              </div>
+
+              <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+
+              <div class="transport" aria-label="Playback controls">
+                <button id="prev-btn" class="control-button skip" type="button" aria-label="Previous track">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 5h2v14H6V5Zm3.5 7L19 5.5v13L9.5 12Z" />
+                  </svg>
+                </button>
+
+                <button
+                  id="play-btn"
+                  class="control-button play"
+                  type="button"
+                  aria-label="Play"
+                  aria-pressed="false"
+                >
+                  <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 5v14l11-7L8 5Z" />
+                  </svg>
+                  <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z" />
+                  </svg>
+                </button>
+
+                <button id="next-btn" class="control-button skip" type="button" aria-label="Next track">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16 5h2v14h-2V5ZM5 5.5l9.5 6.5L5 18.5v-13Z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="timeline">
+                <span id="current-time">0:00</span>
+                <input
+                  id="seek"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value="0"
+                  aria-label="Song position"
+                />
+                <span id="duration">0:00</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="transport">
-          <button id="prev-btn" aria-label="Previous track">⏮</button>
-          <button id="play-btn" class="play" aria-label="Play or pause">▶</button>
-          <button id="next-btn" aria-label="Next track">⏭</button>
-        </div>
+        <aside class="song-selector" aria-labelledby="playlist-heading">
+          <div class="selector-marquee" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
 
-        <div class="timeline">
-          <span id="current-time">0:00</span>
-          <input id="seek" type="range" min="0" max="100" value="0" />
-          <span id="duration">0:00</span>
-        </div>
+          <div class="selector-header">
+            <div>
+              <p class="selector-label">Make a selection</p>
+              <h2 id="playlist-heading">Music Vault</h2>
+            </div>
+            <button id="refresh-btn" class="refresh-button" type="button">
+              Refresh
+            </button>
+          </div>
 
-        <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+          <p id="library-status" class="library-status" role="status">
+            Loading the complete song list…
+          </p>
+
+          <ol id="playlist" class="playlist" aria-label="Available songs"></ol>
+
+          <div class="selector-footer">
+            <span class="status-light" aria-hidden="true"></span>
+            <span id="track-count">Connecting to the vault</span>
+          </div>
+        </aside>
       </section>
 
-      <section class="playlist-card">
-        <div class="playlist-header">
-          <h3>Playlist</h3>
-          <button id="refresh-btn">Refresh tracks</button>
-        </div>
-        <ul id="playlist"></ul>
-      </section>
+      <noscript>
+        <p class="noscript-message">
+          JavaScript is required to load and play the Big4Arts music library.
+        </p>
+      </noscript>
+
+      <footer class="vault-footer">
+        <p>Original music from Cameron &amp; Hutch · Big4Arts</p>
+      </footer>
     </main>
 
-    <audio id="audio"></audio>
+    <audio id="audio" preload="metadata"></audio>
     <script src="app.js"></script>
   </body>
 </html>
