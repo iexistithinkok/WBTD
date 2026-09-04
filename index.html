@@ -11,7 +11,7 @@
     <title>Big4Arts Music Vault</title>
     <link rel="preconnect" href="https://api.github.com" />
     <link rel="preconnect" href="https://raw.githubusercontent.com" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
 
   <body>
@@ -22,11 +22,14 @@
     <main class="vault-shell">
       <header class="vault-header">
         <div>
-          <p class="eyebrow">Cameron &amp; Hutch Music Vault</p>
+          <p class="eyebrow">Big4Arts Music Vault</p>
           <h1>Turn Up the Stories. <span>Hear the Future.</span></h1>
         </div>
 
         <nav class="creator-links" aria-label="Creator websites">
+          <a class="brand-home" href="https://big4arts.com/" aria-label="Return to Big4Arts home">
+            Big4Arts Home
+          </a>
           <a href="https://mccameron.com" target="_blank" rel="noopener noreferrer">
             McCameron
           </a>
@@ -41,7 +44,7 @@
           <div class="jukebox" id="jukebox">
             <img
               class="jukebox-frame"
-              src="jukebox-frame-clean-v3.png"
+              src="jukebox-frame-clean-v4.png"
               alt="Futuristic neon Big4Arts jukebox"
               width="1180"
               height="1333"
@@ -50,7 +53,27 @@
             <div class="player-overlay">
               <div class="now-playing" aria-live="polite">
                 <p>Now playing</p>
-                <h2 id="track-title">Loading the Music Vault…</h2>
+                <h2 id="track-title-accessible" class="visually-hidden">
+                  Loading the Music Vault…
+                </h2>
+                <svg
+                  class="track-title-arc"
+                  viewBox="0 0 400 110"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <defs>
+                    <path id="track-title-curve" d="M 34 94 Q 200 18 366 94" />
+                  </defs>
+                  <text id="track-title-text" class="track-title-text">
+                    <textPath
+                      id="track-title"
+                      href="#track-title-curve"
+                      startOffset="50%"
+                      text-anchor="middle"
+                    >Loading the Music Vault…</textPath>
+                  </text>
+                </svg>
                 <span id="track-meta">Scanning the complete music library</span>
               </div>
 
@@ -141,11 +164,11 @@
       </noscript>
 
       <footer class="vault-footer">
-        <p>Original music from Cameron &amp; Hutch · Big4Arts</p>
+        <p>Big4Arts original music · Cameron &amp; Hutch</p>
       </footer>
     </main>
 
     <audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>

@@ -19,6 +19,8 @@ const elements = {
   audio: document.querySelector("#audio"),
   jukebox: document.querySelector("#jukebox"),
   trackTitle: document.querySelector("#track-title"),
+  trackTitleText: document.querySelector("#track-title-text"),
+  trackTitleAccessible: document.querySelector("#track-title-accessible"),
   trackMeta: document.querySelector("#track-meta"),
   playButton: document.querySelector("#play-btn"),
   previousButton: document.querySelector("#prev-btn"),
@@ -42,6 +44,7 @@ const state = {
   frequencyData: null,
   waveformData: null,
   animationFrame: null,
+  titleFitFrame: null,
 };
 
 function isAudioFile(filename) {
@@ -213,6 +216,26 @@ function updateActiveTrack() {
   });
 }
 
+function setTrackTitle(title) {
+  elements.trackTitle.textContent = title;
+  elements.trackTitleAccessible.textContent = title;
+
+  const titleSize = title.length > 48 ? 16 : title.length > 36 ? 18 : title.length > 25 ? 20 : 22;
+  elements.trackTitleText.style.fontSize = `${titleSize}px`;
+  elements.trackTitleText.removeAttribute("textLength");
+  elements.trackTitleText.removeAttribute("lengthAdjust");
+
+  if (state.titleFitFrame) window.cancelAnimationFrame(state.titleFitFrame);
+  state.titleFitFrame = window.requestAnimationFrame(() => {
+    const maximumLength = 320;
+    if (elements.trackTitleText.getComputedTextLength() > maximumLength) {
+      elements.trackTitleText.setAttribute("textLength", String(maximumLength));
+      elements.trackTitleText.setAttribute("lengthAdjust", "spacingAndGlyphs");
+    }
+    state.titleFitFrame = null;
+  });
+}
+
 function updateMediaSession(track) {
   if (!("mediaSession" in navigator) || !("MediaMetadata" in window)) return;
   try {
@@ -233,7 +256,7 @@ async function selectTrack(index, shouldPlay = true) {
   const track = state.tracks[normalizedIndex];
   state.currentIndex = normalizedIndex;
 
-  elements.trackTitle.textContent = track.title;
+  setTrackTitle(track.title);
   elements.trackMeta.textContent = track.filename;
   elements.currentTime.textContent = "0:00";
   elements.duration.textContent = "0:00";
@@ -287,7 +310,7 @@ async function loadLibrary(forceRefresh = false) {
     console.error(error);
     state.tracks = [];
     elements.playlist.replaceChildren();
-    elements.trackTitle.textContent = "The Music Vault is resting";
+    setTrackTitle("The Music Vault is resting");
     elements.trackMeta.textContent = "Please try Refresh in a moment";
     setLibraryStatus("The song list could not be loaded. Please press Refresh.", true);
     elements.trackCount.textContent = "Music connection unavailable";

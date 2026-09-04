@@ -20,6 +20,18 @@
   box-sizing: border-box;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 html {
   min-width: 320px;
   background: var(--ink);
@@ -158,6 +170,18 @@ button {
   transform: translateY(-2px);
 }
 
+.creator-links .brand-home {
+  border-color: rgba(38, 231, 255, 0.72);
+  font-weight: 800;
+  background: linear-gradient(110deg, rgba(36, 140, 255, 0.34), rgba(141, 92, 255, 0.3), rgba(255, 63, 212, 0.28));
+  box-shadow: 0 0 22px rgba(38, 231, 255, 0.14), inset 0 0 16px rgba(255, 255, 255, 0.06);
+}
+
+.creator-links .brand-home:hover {
+  border-color: white;
+  background: linear-gradient(110deg, rgba(36, 140, 255, 0.54), rgba(141, 92, 255, 0.48), rgba(255, 63, 212, 0.46));
+}
+
 .vault-layout {
   display: grid;
   grid-template-columns: minmax(420px, 1.25fr) minmax(330px, 0.75fr);
@@ -222,9 +246,9 @@ button {
 
 .now-playing {
   position: absolute;
-  top: 4%;
+  top: 0;
   left: 50%;
-  width: 90%;
+  width: 100%;
   transform: translateX(-50%);
   text-shadow: 0 2px 12px #020108, 0 0 22px rgba(38, 231, 255, 0.35);
 }
@@ -238,20 +262,30 @@ button {
   text-transform: uppercase;
 }
 
-.now-playing h2 {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0;
-  font-size: clamp(0.88rem, 2vw, 1.35rem);
-  line-height: 1.12;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.track-title-arc {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: -3px auto 0;
+  overflow: visible;
+}
+
+.track-title-text {
+  fill: var(--white);
+  stroke: rgba(2, 1, 10, 0.9);
+  stroke-width: 2px;
+  paint-order: stroke fill;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: 0.45px;
+  text-shadow: 0 0 14px rgba(38, 231, 255, 0.6);
 }
 
 #track-meta {
   display: block;
   overflow: hidden;
-  margin-top: 4px;
+  margin: -17px auto 0;
+  max-width: 84%;
   color: var(--muted);
   font-size: clamp(0.56rem, 1vw, 0.72rem);
   text-overflow: ellipsis;
@@ -655,8 +689,8 @@ input[type="range"]::-moz-range-thumb {
     width: 96%;
   }
 
-  .now-playing h2 {
-    font-size: clamp(0.72rem, 3.5vw, 1rem);
+  .track-title-text {
+    font-size: 20px;
   }
 
   #track-meta {
