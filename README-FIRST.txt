@@ -1,4 +1,4 @@
-BIG4ARTS JUKEBOX V2 — INSTALLATION
+BIG4ARTS JUKEBOX V3 — CACHE-PROOF INSTALLATION
 ================================
 
 This revision keeps the automatic GitHub music-library scanner and replaces the
@@ -9,15 +9,15 @@ FILES IN THIS PACKAGE
 index.html
 styles.css
 app.js
-jukebox-frame.png
+jukebox-frame-clean-v3.png
 
 HOW TO INSTALL IT ON YOUR EXISTING GITHUB PAGES SITE
 ----------------------------------------------------
 1. Open the GitHub repository that currently publishes music.big4arts.com.
 2. Upload index.html, styles.css, and app.js to the repository's main folder.
 3. When GitHub asks, approve replacing the older files with these new files.
-4. Upload jukebox-frame.png beside those three files in the same main folder.
-   Replace the older jukebox-frame.png when GitHub asks.
+4. Upload jukebox-frame-clean-v3.png beside those three files in the same main folder.
+   This new filename prevents browsers from reusing the earlier artwork.
 5. Leave your existing assets folder and every MP3 inside it exactly where they are.
 6. Commit the changes to the main branch.
 7. Allow GitHub Pages a few minutes to publish, then reload music.big4arts.com.
@@ -44,3 +44,6 @@ WHAT THE NEW PLAYER DOES
 - Adapts the jukebox and song selector for desktop, tablet, and phone screens.
 
 No domain or DNS changes are required.
+
+The older jukebox-frame.png may remain in the repository. Version 3 does not
+reference it, so it cannot appear in the player.
